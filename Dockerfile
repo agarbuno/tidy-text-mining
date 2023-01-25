@@ -5,7 +5,7 @@ MAINTAINER Alfredo Garbuno Iñigo "alfredo.garbuno@itam.mx"
 ENV RSTUDIO_USER rstudio
 ENV TARGET_DIR ""
 ENV RUNNING_IN_DOCKER true
-ENV CMDSTAN /home/.cmdstan
+ENV CMDSTAN /root/.cmdstan
 
 # Lets declare the work directory ==============================================
 RUN adduser $RSTUDIO_USER sudo
@@ -16,7 +16,7 @@ WORKDIR /home/$RSTUDIO_USER/
 RUN apt-get install --no-install-recommends -qq wget ca-certificates make g++
 RUN apt-get update \
     && apt-get install -y libmagick++-dev htop tree \
-    && apt-get install -y python3-pip libfontconfig1-dev
+    && apt-get install -y python3-pip libfontconfig1-dev libgsl-dev
 
 RUN pip3 --version \
     && pip3 install radian
@@ -44,16 +44,7 @@ COPY renv.lock renv.lock
 COPY .Rprofile .Rprofile
 COPY renv/activate.R renv/activate.R
 COPY renv/settings.dcf renv/settings.dcf
-RUN install2.r --error rmarkdown httpgd languageserver
-
-WORKDIR /home/.cmdstan
-
-RUN wget --progress=dot:mega https://github.com/stan-dev/cmdstan/releases/download/v2.30.1/cmdstan-2.30.1.tar.gz \ 
- && tar -zxpf cmdstan-2.30.1.tar.gz \
- && ln -s cmdstan-2.30.1 .cmdstan \
- && cd .cmdstan; make build 
-
-WORKDIR /home/$RSTUDIO_USER/
+RUN install2.r --error rmarkdown languageserver
 
 RUN R -e "renv::restore()"
 RUN rm -rf renv.lock .Rprofile renv
