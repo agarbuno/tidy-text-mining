@@ -960,6 +960,24 @@
       "Hash": "36b4265fb818f6a342bed217549cd896",
       "Requirements": []
     },
+    "gutenbergr": {
+      "Package": "gutenbergr",
+      "Version": "0.2.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "a35249219a8c02f7e9d97e62a1d081f6",
+      "Requirements": [
+        "cli",
+        "dplyr",
+        "glue",
+        "lazyeval",
+        "magrittr",
+        "purrr",
+        "readr",
+        "stringr",
+        "urltools"
+      ]
+    },
     "hardhat": {
       "Package": "hardhat",
       "Version": "1.2.0",
@@ -2292,6 +2310,16 @@
         "tm"
       ]
     },
+    "triebeard": {
+      "Package": "triebeard",
+      "Version": "0.3.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "847a9d113b78baca4a9a8639609ea228",
+      "Requirements": [
+        "Rcpp"
+      ]
+    },
     "tune": {
       "Package": "tune",
       "Version": "1.0.1",
@@ -2361,6 +2389,17 @@
       "Requirements": [
         "cpp11",
         "systemfonts"
+      ]
+    },
+    "urltools": {
+      "Package": "urltools",
+      "Version": "1.7.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "e86a704261a105f4703f653e05defa3e",
+      "Requirements": [
+        "Rcpp",
+        "triebeard"
       ]
     },
     "utf8": {
