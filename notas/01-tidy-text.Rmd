@@ -1,6 +1,10 @@
 # The tidy text format {#tidytext}
 
-```{r setup, eval = FALSE, include = FALSE}
+```{r setup}
+renv::restore()
+```
+
+```{r, eval = FALSE, include = FALSE}
 library(tidyverse)
 library(ggplot2)
 tibble(x = rnorm(10000)) |> 
@@ -66,8 +70,16 @@ Within our tidy text framework, we need to both break the text into individual t
 ```{r dependson = "text_df", R.options = list(dplyr.print_max = 10)}
 library(tidytext)
 
-text_df |>
-  unnest_tokens(word, text)
+text_df |> 
+  unnest_tokens(word, text) |> 
+  group_by(line) |> 
+  tally()
+
+text_df |> 
+  unnest_tokens(word, text) |> 
+  group_by(word) |> 
+  tally()
+
 ```
 
 The two basic arguments to `unnest_tokens` used here are column names. First we have the output column name that will be created as the text is unnested into it (`word`, in this case), and then the input column that the text comes from (`text`, in this case). Remember that `text_df` above has a column called `text` that contains the data of interest.
@@ -95,7 +107,8 @@ library(dplyr)
 library(stringr)
 
 austen_books() |>
-  group_by(book)  
+  group_by(book) |>
+  tally()
 
 original_books <- austen_books() |>
   group_by(book) |>
@@ -105,7 +118,12 @@ original_books <- austen_books() |>
                                            ignore_case = TRUE)))) |>
   ungroup()
 
-original_books
+original_books |> 
+  group_by(book, chapter)  |> 
+  tally() |> 
+  group_by(book) |> 
+  tally()
+
 ```
 
 To work with this as a tidy dataset, we need to restructure it in the **one-token-per-row** format, which as we saw earlier is done with the `unnest_tokens()` function.
@@ -115,7 +133,12 @@ library(tidytext)
 tidy_books <- original_books |>
   unnest_tokens(word, text)
 
-tidy_books
+tidy_books |> 
+  group_by(word) |> 
+  tally() |>
+  arrange(desc(n))
+
+
 ```
 
 This function uses the [tokenizers](https://github.com/ropensci/tokenizers) package to separate each line of text in the original data frame into tokens. The default tokenizing is for words, but other options include characters, n-grams, sentences, lines, paragraphs, or separation around a regex pattern.
@@ -135,7 +158,10 @@ We can also use dplyr's `count()` to find the most common words in all the books
 
 ```{r dependson = "tidy_books"}
 tidy_books |>
-  count(word, sort = TRUE) 
+  group_by(book, word) |> 
+  tally() |> 
+  arrange(book, desc(n)) |> 
+  print(n = 50)
 ```
 
 Because we've been using tidy tools, our word counts are stored in a tidy data frame. This allows us to pipe this directly to the ggplot2 package, for example to create a visualization of the most common words (Figure \@ref(fig:plotcount)).
@@ -219,6 +245,17 @@ Now, let's calculate the frequency for each word for the works of Jane Austen, t
 
 ```{r frequency, dependson = c("tidy_bronte", "tidy_hgwells", "tidy_books")}
 library(tidyr)
+
+bind_rows(mutate(tidy_bronte, author = "Brontë Sisters"),
+                       mutate(tidy_hgwells, author = "H.G. Wells"), 
+                       mutate(tidy_books, author = "Jane Austen")) |> 
+  mutate(word = str_extract(word, "[a-z']+")) |>
+  count(author, word) |>
+  group_by(author) |>
+  mutate(proportion = n / sum(n)) |> 
+  select(-n) |> 
+  pivot_wider(names_from = author, values_from = proportion) |>
+  filter(word == "time")
 
 frequency <- bind_rows(mutate(tidy_bronte, author = "Brontë Sisters"),
                        mutate(tidy_hgwells, author = "H.G. Wells"), 
