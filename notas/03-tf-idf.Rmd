@@ -23,12 +23,12 @@ library(dplyr)
 library(janeaustenr)
 library(tidytext)
 
-book_words <- austen_books() %>%
-  unnest_tokens(word, text) %>%
+book_words <- austen_books() |>
+  unnest_tokens(word, text) |>
   count(book, word, sort = TRUE)
 
-total_words <- book_words %>% 
-  group_by(book) %>% 
+total_words <- book_words |> 
+  group_by(book) |> 
   summarize(total = sum(n))
 
 book_words <- left_join(book_words, total_words)
@@ -60,10 +60,10 @@ Zipf's law states that the frequency that a word appears is inversely proportion
 Since we have the data frame we used to plot term frequency, we can examine Zipf's law for Jane Austen's novels with just a few lines of dplyr functions.
 
 ```{r freq_by_rank, dependson = book_words}
-freq_by_rank <- book_words %>% 
-  group_by(book) %>% 
+freq_by_rank <- book_words |> 
+  group_by(book) |> 
   mutate(rank = row_number(), 
-         `term frequency` = n/total) %>%
+         `term frequency` = n/total) |>
   ungroup()
 
 freq_by_rank
@@ -72,7 +72,7 @@ freq_by_rank
 The `rank` column here tells us the rank of each word within the frequency table; the table was already ordered by `n` so we could use `row_number()` to find the rank. Then, we can calculate the term frequency in the same way we did before. Zipf's law is often visualized by plotting rank on the x-axis and term frequency on the y-axis, on logarithmic scales. Plotting this way, an inversely proportional relationship will have a constant, negative slope.
 
 ```{r zipf, dependson = "freq_by_rank", fig.width=5, fig.height=4.5, fig.cap="Zipf's law for Jane Austen's novels"}
-freq_by_rank %>% 
+freq_by_rank |> 
   ggplot(aes(rank, `term frequency`, color = book)) + 
   geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) + 
   scale_x_log10() +
@@ -82,7 +82,7 @@ freq_by_rank %>%
 Notice that Figure \@ref(fig:zipf) is in log-log coordinates. We see that all six of Jane Austen's novels are similar to each other, and that the relationship between rank and frequency does have negative slope. It is not quite constant, though; perhaps we could view this as a broken [power law](https://en.wikipedia.org/wiki/Power_law) with, say, three sections. Let's see what the exponent of the power law is for the middle section of the rank range.
 
 ```{r lower_rank, dependson = "freq_by_rank"}
-rank_subset <- freq_by_rank %>% 
+rank_subset <- freq_by_rank |> 
   filter(rank < 500,
          rank > 10)
 
@@ -95,7 +95,7 @@ $$\text{frequency} \propto \frac{1}{\text{rank}}$$
 and we have in fact gotten a slope close to -1 here. Let's plot this fitted power law with the data in Figure \@ref(fig:zipffit) to see how it looks.
 
 ```{r zipffit, dependson = "freq_by_rank", fig.width=5, fig.height=4.5, fig.cap="Fitting an exponent for Zipf's law with Jane Austen's novels"}
-freq_by_rank %>% 
+freq_by_rank |> 
   ggplot(aes(rank, `term frequency`, color = book)) + 
   geom_abline(intercept = -0.62, slope = -1.1, 
               color = "gray50", linetype = 2) +
@@ -113,7 +113,7 @@ The idea of tf-idf is to find the important words for the content of each docume
 The `bind_tf_idf()` function in the tidytext package takes a tidy text dataset as input with one row per token (term), per document. One column (`word` here) contains the terms/tokens, one column contains the documents (`book` in this case), and the last necessary column contains the counts, how many times each document contains each term (`n` in this example). We calculated a `total` for each book for our explorations in previous sections, but it is not necessary for the `bind_tf_idf()` function; the table only needs to contain all the words in each document.
 
 ```{r tf_idf, dependson = "book_words"}
-book_tf_idf <- book_words %>%
+book_tf_idf <- book_words |>
   bind_tf_idf(word, book, n)
 
 book_tf_idf
@@ -124,8 +124,8 @@ Notice that idf and thus tf-idf are zero for these extremely common words. These
 Let's look at terms with high tf-idf in Jane Austen's works.
 
 ```{r desc_idf, dependson = "tf_idf"}
-book_tf_idf %>%
-  select(-total) %>%
+book_tf_idf |>
+  select(-total) |>
   arrange(desc(tf_idf))
 ```
 
@@ -140,10 +140,10 @@ Let's look at a visualization for these high tf-idf words in Figure \@ref(fig:pl
 ```{r plotseparate, dependson = "plot_austen", fig.height=8, fig.width=6, fig.cap="Highest tf-idf words in each Jane Austen novel"}
 library(forcats)
 
-book_tf_idf %>%
-  group_by(book) %>%
-  slice_max(tf_idf, n = 15) %>%
-  ungroup() %>%
+book_tf_idf |>
+  group_by(book) |>
+  slice_max(tf_idf, n = 15) |>
+  ungroup() |>
   ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = book)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~book, ncol = 2, scales = "free") +
@@ -171,8 +171,8 @@ load("data/physics.rda")
 Now that we have the texts, let's use `unnest_tokens()` and `count()` to find out how many times each word was used in each text.
 
 ```{r physics_words, dependson = "physics"}
-physics_words <- physics %>%
-  unnest_tokens(word, text) %>%
+physics_words <- physics |>
+  unnest_tokens(word, text) |>
   count(author, word, sort = TRUE)
 
 physics_words
@@ -181,18 +181,18 @@ physics_words
 Here we see just the raw counts; we need to remember that these documents are all different lengths. Let's go ahead and calculate tf-idf, then visualize the high tf-idf words in Figure \@ref(fig:physicsseparate).
 
 ```{r physicsseparate, dependson = "plot_physics", fig.height=6, fig.width=6, fig.cap="Highest tf-idf words in each physics texts"}
-plot_physics <- physics_words %>%
-  bind_tf_idf(word, author, n) %>%
+plot_physics <- physics_words |>
+  bind_tf_idf(word, author, n) |>
   mutate(author = factor(author, levels = c("Galilei, Galileo",
                                             "Huygens, Christiaan", 
                                             "Tesla, Nikola",
                                             "Einstein, Albert")))
 
-plot_physics %>% 
-  group_by(author) %>% 
-  slice_max(tf_idf, n = 15) %>% 
-  ungroup() %>%
-  mutate(word = reorder(word, tf_idf)) %>%
+plot_physics |> 
+  group_by(author) |> 
+  slice_max(tf_idf, n = 15) |> 
+  ungroup() |>
+  mutate(word = reorder(word, tf_idf)) |>
   ggplot(aes(tf_idf, word, fill = author)) +
   geom_col(show.legend = FALSE) +
   labs(x = "tf-idf", y = NULL) +
@@ -204,8 +204,8 @@ Very interesting indeed. One thing we see here is "_k_" in the Einstein text?!
 ```{r dependson = "physics"}
 library(stringr)
 
-physics %>% 
-  filter(str_detect(text, "_k_")) %>% 
+physics |> 
+  filter(str_detect(text, "_k_")) |> 
   select(text)
 ```
 
@@ -214,8 +214,8 @@ Some cleaning up of the text may be in order. Also notice that there are separat
 "AB", "RC", and so forth are names of rays, circles, angles, and so forth for Huygens.
 
 ```{r dependson = "physics"}
-physics %>% 
-  filter(str_detect(text, "RC")) %>% 
+physics |> 
+  filter(str_detect(text, "RC")) |> 
   select(text)
 ```
 
@@ -229,13 +229,13 @@ mystopwords <- tibble(word = c("eq", "co", "rc", "ac", "ak", "bn",
 physics_words <- anti_join(physics_words, mystopwords, 
                            by = "word")
 
-plot_physics <- physics_words %>%
-  bind_tf_idf(word, author, n) %>%
-  mutate(word = str_remove_all(word, "_")) %>%
-  group_by(author) %>% 
-  slice_max(tf_idf, n = 15) %>%
-  ungroup() %>%
-  mutate(word = fct_reorder(word, tf_idf)) %>%
+plot_physics <- physics_words |>
+  bind_tf_idf(word, author, n) |>
+  mutate(word = str_remove_all(word, "_")) |>
+  group_by(author) |> 
+  slice_max(tf_idf, n = 15) |>
+  ungroup() |>
+  mutate(word = fct_reorder(word, tf_idf)) |>
   mutate(author = factor(author, levels = c("Galilei, Galileo",
                                             "Huygens, Christiaan",
                                             "Tesla, Nikola",

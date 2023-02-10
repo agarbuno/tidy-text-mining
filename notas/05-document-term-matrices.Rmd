@@ -66,7 +66,7 @@ Notice that only the non-zero values are included in the tidied output: document
 As we've seen in previous chapters, this form is convenient for analysis with the dplyr, tidytext and ggplot2 packages. For example, you can perform sentiment analysis on these newspaper articles with the approach described in Chapter \@ref(sentiment).
 
 ```{r apsentiments, dependson = "ap_td"}
-ap_sentiments <- ap_td %>%
+ap_sentiments <- ap_td |>
   inner_join(get_sentiments("bing"), by = c(term = "word"))
 
 ap_sentiments
@@ -77,12 +77,12 @@ This would let us visualize which words from the AP articles most often contribu
 ```{r apsentimentplot, dependson = "apsentiments", fig.height = 6, fig.width = 7, fig.cap = "Words from AP articles with the greatest contribution to positive or negative sentiments, using the Bing sentiment lexicon"}
 library(ggplot2)
 
-ap_sentiments %>%
-  count(sentiment, term, wt = count) %>%
-  ungroup() %>%
-  filter(n >= 200) %>%
-  mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
-  mutate(term = reorder(term, n)) %>%
+ap_sentiments |>
+  count(sentiment, term, wt = count) |>
+  ungroup() |>
+  filter(n >= 200) |>
+  mutate(n = ifelse(sentiment == "negative", -n, n)) |>
+  mutate(term = reorder(term, n)) |>
   ggplot(aes(n, term, fill = sentiment)) +
   geom_col() +
   labs(x = "Contribution to sentiment", y = NULL)
@@ -94,8 +94,8 @@ Other text mining packages provide alternative implementations of document-term 
 
 ```{r inaug_dfm, R.options=list(quanteda_print_dfm_max_ndoc = 0, quanteda_print_dfm_max_nfeat = 0)}
 data("data_corpus_inaugural", package = "quanteda")
-inaug_dfm <- data_corpus_inaugural %>%
-  quanteda::tokens() %>%
+inaug_dfm <- data_corpus_inaugural |>
+  quanteda::tokens() |>
   quanteda::dfm(verbose = FALSE)
 inaug_dfm
 ```
@@ -110,8 +110,8 @@ inaug_td
 We may be interested in finding the words most specific to each of the inaugural speeches. This could be quantified by calculating the tf-idf of each term-speech pair using the `bind_tf_idf()` function, as described in Chapter \@ref(tfidf).
 
 ```{r presidents, dependson = "inaug_td", fig.width = 8, fig.height = 8}
-inaug_tf_idf <- inaug_td %>%
-  bind_tf_idf(term, document, count) %>%
+inaug_tf_idf <- inaug_td |>
+  bind_tf_idf(term, document, count) |>
   arrange(desc(tf_idf))
 
 inaug_tf_idf
@@ -123,12 +123,12 @@ We could use this data to pick four notable inaugural addresses (from Presidents
 speeches <- c("1933-Roosevelt", "1861-Lincoln",
               "1961-Kennedy", "2009-Obama")
 
-inaug_tf_idf %>%
-  filter(document %in% speeches) %>%
-  group_by(document) %>%
-  slice_max(tf_idf, n = 10, with_ties = FALSE) %>%
-  ungroup() %>%
-  mutate(term = reorder_within(term, tf_idf, document)) %>%
+inaug_tf_idf |>
+  filter(document %in% speeches) |>
+  group_by(document) |>
+  slice_max(tf_idf, n = 10, with_ties = FALSE) |>
+  ungroup() |>
+  mutate(term = reorder_within(term, tf_idf, document)) |>
   ggplot(aes(term, tf_idf, fill = document)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ document, scales = "free") +
@@ -147,18 +147,18 @@ Note that we've used tidyr's `complete()` function to include zeroes (cases wher
 ```{r year_term_counts, dependson = "inaug_td"}
 library(tidyr)
 
-year_term_counts <- inaug_td %>%
-  extract(document, "year", "(\\d+)", convert = TRUE) %>%
-  complete(year, term, fill = list(count = 0)) %>%
-  group_by(year) %>%
+year_term_counts <- inaug_td |>
+  extract(document, "year", "(\\d+)", convert = TRUE) |>
+  complete(year, term, fill = list(count = 0)) |>
+  group_by(year) |>
   mutate(year_total = sum(count))
 ```
 
 This lets us pick several words and visualize how they changed in frequency over time, as shown in \@ref(fig:yearterm). We can see that over time, American presidents became less likely to refer to the country as the "Union" and more likely to refer to "America". They also became less likely to talk about the "constitution" and foreign" countries, and more likely to mention "freedom" and "God".
 
 ```{r yearterm, dependson = "year_term_counts", fig.cap = "Changes in word frequency over time within Presidential inaugural addresses, for six selected terms"}
-year_term_counts %>%
-  filter(term %in% c("god", "america", "foreign", "union", "constitution", "freedom")) %>%
+year_term_counts |>
+  filter(term %in% c("god", "america", "foreign", "union", "constitution", "freedom")) |>
   ggplot(aes(year, count / year_total)) +
   geom_point() +
   geom_smooth() +
@@ -176,14 +176,14 @@ Just as some existing text mining packages provide document-term matrices as sam
 For example, we could take the tidied AP dataset and cast it back into a document-term matrix using the `cast_dtm()` function.
 
 ```{r}
-ap_td %>%
+ap_td |>
   cast_dtm(document, term, count)
 ```
 
 Similarly, we could cast the table into a `dfm` object from quanteda's dfm with `cast_dfm()`.
 
 ```{r chunk1, R.options=list(quanteda_print_dfm_max_ndoc = 0, quanteda_print_dfm_max_nfeat = 0)}
-ap_td %>%
+ap_td |>
   cast_dfm(document, term, count)
 ```
 
@@ -193,7 +193,7 @@ Some tools simply require a sparse matrix:
 library(Matrix)
 
 # cast into a Matrix object
-m <- ap_td %>%
+m <- ap_td |>
   cast_sparse(document, term, count)
 
 class(m)
@@ -205,9 +205,9 @@ This kind of conversion could easily be done from any of the tidy text structure
 ```{r austen_dtm}
 library(janeaustenr)
 
-austen_dtm <- austen_books() %>%
-  unnest_tokens(word, text) %>%
-  count(book, word) %>%
+austen_dtm <- austen_books() |>
+  unnest_tokens(word, text) |>
+  count(book, word) |>
   cast_dtm(book, word, n)
 
 austen_dtm
@@ -241,19 +241,19 @@ acq_td
 This can then be used with `unnest_tokens()` to, for example, find the most common words across the 50 Reuters articles, or the ones most specific to each article.
 
 ```{r acq_tokens, dependson = "acq_td"}
-acq_tokens <- acq_td %>%
-  select(-places) %>%
-  unnest_tokens(word, text) %>%
+acq_tokens <- acq_td |>
+  select(-places) |>
+  unnest_tokens(word, text) |>
   anti_join(stop_words, by = "word")
 
 # most common words
-acq_tokens %>%
+acq_tokens |>
   count(word, sort = TRUE)
 
 # tf-idf
-acq_tokens %>%
-  count(id, word) %>%
-  bind_tf_idf(word, id, n) %>%
+acq_tokens |>
+  count(id, word) |>
+  bind_tf_idf(word, id, n) |>
   arrange(desc(tf_idf))
 ```
 
@@ -281,7 +281,7 @@ download_articles <- function(symbol) {
 }
 
 stock_articles <- tibble(company = company,
-                         symbol = symbol) %>%
+                         symbol = symbol) |>
   mutate(corpus = map(symbol, download_articles))
 ```
 
@@ -298,10 +298,10 @@ stock_articles
 Each of the items in the `corpus` list column is a `WebCorpus` object, which is a special case of a corpus like `acq`. We can thus turn each into a data frame using the `tidy()` function, unnest it with tidyr's `unnest()`, then tokenize the `text` column of the individual articles using `unnest_tokens()`.
 
 ```{r stock_tokens, dependson = "stock_articles"}
-stock_tokens <- stock_articles %>%
-  mutate(corpus = map(corpus, tidy)) %>%
-  unnest(cols = (corpus)) %>%
-  unnest_tokens(word, text) %>%
+stock_tokens <- stock_articles |>
+  mutate(corpus = map(corpus, tidy)) |>
+  unnest(cols = (corpus)) |>
+  unnest_tokens(word, text) |>
   select(company, datetimestamp, word, id, heading)
 
 stock_tokens
@@ -312,21 +312,21 @@ Here we see some of each article's metadata alongside the words used. We could u
 ```{r stocktfidfdata, dependson="stock_tokens"}
 library(stringr)
 
-stock_tf_idf <- stock_tokens %>%
-  count(company, word) %>%
-  filter(!str_detect(word, "\\d+")) %>%
-  bind_tf_idf(word, company, n) %>%
+stock_tf_idf <- stock_tokens |>
+  count(company, word) |>
+  filter(!str_detect(word, "\\d+")) |>
+  bind_tf_idf(word, company, n) |>
   arrange(-tf_idf)
 ```
 
 The top terms for each are visualized in Figure \@ref(fig:stocktfidf). As we'd expect, the company's name and symbol are typically included, but so are several of their product offerings and executives, as well as companies they are making deals with (such as Disney with Netflix).
 
 ```{r stocktfidf, dependson = "stocktfidfdata", echo = FALSE, fig.cap = "The 8 words with the highest tf-idf in recent articles specific to each company", fig.height = 8, fig.width = 8}
-stock_tf_idf %>%
-  group_by(company) %>%
-  slice_max(tf_idf, n = 8) %>%
-  ungroup() %>%
-  mutate(word = reorder(word, tf_idf)) %>%
+stock_tf_idf |>
+  group_by(company) |>
+  slice_max(tf_idf, n = 8) |>
+  ungroup() |>
+  mutate(word = reorder(word, tf_idf)) |>
   ggplot(aes(word, tf_idf, fill = company)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ company, scales = "free") +
@@ -338,14 +338,14 @@ stock_tf_idf %>%
 If we were interested in using recent news to analyze the market and make investment decisions, we'd likely want to use sentiment analysis to determine whether the news coverage was positive or negative. Before we run such an analysis, we should look at what words would contribute the most to positive and negative sentiments, as was shown in Chapter \@ref(most-positive-negative). For example, we could examine this within the AFINN lexicon (Figure \@ref(fig:stockafinn)).
 
 ```{r eval=FALSE}
-stock_tokens %>%
-  anti_join(stop_words, by = "word") %>%
-  count(word, id, sort = TRUE) %>%
-  inner_join(get_sentiments("afinn"), by = "word") %>%
-  group_by(word) %>%
-  summarize(contribution = sum(n * value)) %>%
-  slice_max(abs(contribution), n = 12) %>%
-  mutate(word = reorder(word, contribution)) %>%
+stock_tokens |>
+  anti_join(stop_words, by = "word") |>
+  count(word, id, sort = TRUE) |>
+  inner_join(get_sentiments("afinn"), by = "word") |>
+  group_by(word) |>
+  summarize(contribution = sum(n * value)) |>
+  slice_max(abs(contribution), n = 12) |>
+  mutate(word = reorder(word, contribution)) |>
   ggplot(aes(contribution, word)) +
   geom_col() +
   labs(x = "Frequency of word * AFINN value", y = NULL)
@@ -354,14 +354,14 @@ stock_tokens %>%
 
 ```{r stockafinn, dependson = "stock_articles", echo=FALSE, fig.cap = "The words with the largest contribution to sentiment values in recent financial articles, according to the AFINN dictionary. The 'contribution' is the product of the word and the sentiment score."}
 load("data/afinn.rda")
-stock_tokens %>%
-  anti_join(stop_words, by = "word") %>%
-  count(word, id, sort = TRUE) %>%
-  inner_join(afinn, by = "word") %>%
-  group_by(word) %>%
-  summarize(contribution = sum(n * value)) %>%
-  slice_max(abs(contribution), n = 12) %>%
-  mutate(word = reorder(word, contribution)) %>%
+stock_tokens |>
+  anti_join(stop_words, by = "word") |>
+  count(word, id, sort = TRUE) |>
+  inner_join(afinn, by = "word") |>
+  group_by(word) |>
+  summarize(contribution = sum(n * value)) |>
+  slice_max(abs(contribution), n = 12) |>
+  mutate(word = reorder(word, contribution)) |>
   ggplot(aes(contribution, word)) +
   geom_col() +
   labs(x = "Frequency of word * AFINN value", y = NULL)
@@ -374,13 +374,13 @@ Instead, we introduce another sentiment lexicon: the Loughran and McDonald dicti
 The Loughran data divides words into six sentiments: "positive", "negative", "litigious", "uncertain", "constraining", and "superfluous". We could start by examining the most common words belonging to each sentiment within this text dataset.
 
 ```{r eval=FALSE}
-stock_tokens %>%
-  count(word) %>%
-  inner_join(get_sentiments("loughran"), by = "word") %>%
-  group_by(sentiment) %>%
-  slice_max(n, n = 5, with_ties = FALSE) %>%
-  ungroup() %>%
-  mutate(word = reorder(word, n)) %>%
+stock_tokens |>
+  count(word) |>
+  inner_join(get_sentiments("loughran"), by = "word") |>
+  group_by(sentiment) |>
+  slice_max(n, n = 5, with_ties = FALSE) |>
+  ungroup() |>
+  mutate(word = reorder(word, n)) |>
   ggplot(aes(n, word)) +
   geom_col() +
   facet_wrap(~ sentiment, scales = "free") +
@@ -390,13 +390,13 @@ stock_tokens %>%
 
 ```{r stockloughransentiments, echo = FALSE, fig.cap = "The most common words in the financial news articles associated with each of the six sentiments in the Loughran and McDonald lexicon"}
 load("data/loughran.rda")
-stock_tokens %>%
-  count(word) %>%
-  inner_join(loughran, by = "word") %>%
-  group_by(sentiment) %>%
-  slice_max(n, n = 5, with_ties = FALSE) %>%
-  ungroup() %>%
-  mutate(word = reorder(word, n)) %>%
+stock_tokens |>
+  count(word) |>
+  inner_join(loughran, by = "word") |>
+  group_by(sentiment) |>
+  slice_max(n, n = 5, with_ties = FALSE) |>
+  ungroup() |>
+  mutate(word = reorder(word, n)) |>
   ggplot(aes(n, word)) +
   geom_col() +
   facet_wrap(~ sentiment, scales = "free") +
@@ -408,18 +408,18 @@ These assignments (Figure \@ref(fig:stockloughransentiments)) of words to sentim
 Now that we know we can trust the dictionary to approximate the articles' sentiments, we can use our typical methods for counting the number of uses of each sentiment-associated word in each corpus.
 
 ```{r eval=FALSE}
-stock_sentiment_count <- stock_tokens %>%
-  inner_join(get_sentiments("loughran"), by = "word") %>%
-  count(sentiment, company) %>%
+stock_sentiment_count <- stock_tokens |>
+  inner_join(get_sentiments("loughran"), by = "word") |>
+  count(sentiment, company) |>
   pivot_wider(names_from = sentiment, values_from = n, values_fill = 0)
 
 stock_sentiment_count
 ```
 
 ```{r echo=FALSE}
-stock_sentiment_count <- stock_tokens %>%
-  inner_join(loughran, by = "word") %>%
-  count(sentiment, company) %>%
+stock_sentiment_count <- stock_tokens |>
+  inner_join(loughran, by = "word") |>
+  count(sentiment, company) |>
   pivot_wider(names_from = sentiment, values_from = n, values_fill = 0)
 
 stock_sentiment_count
@@ -428,9 +428,9 @@ stock_sentiment_count
 It might be interesting to examine which company has the most news with "litigious" or "uncertain" terms. But the simplest measure, much as it was for most analysis in Chapter \@ref(sentiment), is to see whether the news is more positive or negative. As a general quantitative measure of sentiment, we'll use "(positive - negative) / (positive + negative)" (Figure \@ref(fig:stockpositivity)).
 
 ```{r stockpositivity, fig.cap = "\"Positivity\" of the news coverage around each stock in January 2017, calculated as (positive - negative) / (positive + negative), based on uses of positive and negative words in 20 recent news articles about each company"}
-stock_sentiment_count %>%
-  mutate(score = (positive - negative) / (positive + negative)) %>%
-  mutate(company = reorder(company, score)) %>%
+stock_sentiment_count |>
+  mutate(score = (positive - negative) / (positive + negative)) |>
+  mutate(company = reorder(company, score)) |>
   ggplot(aes(score, company, fill = score > 0)) +
   geom_col(show.legend = FALSE) +
   labs(x = "Positivity score among 20 recent news articles", y = NULL)
