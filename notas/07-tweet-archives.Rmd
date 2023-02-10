@@ -14,10 +14,10 @@ library(readr)
 
 tweets_julia <- read_csv("data/tweets_julia.csv")
 tweets_dave <- read_csv("data/tweets_dave.csv")
-tweets <- bind_rows(tweets_julia %>% 
+tweets <- bind_rows(tweets_julia |> 
                       mutate(person = "Julia"),
-                    tweets_dave %>% 
-                      mutate(person = "David")) %>%
+                    tweets_dave |> 
+                      mutate(person = "David")) |>
   mutate(timestamp = ymd_hms(timestamp))
 
 ggplot(tweets, aes(x = timestamp, fill = person)) +
@@ -44,10 +44,10 @@ library(tidytext)
 library(stringr)
 
 remove_reg <- "&amp;|&lt;|&gt;"
-tidy_tweets <- tweets %>% 
-  filter(!str_detect(text, "^RT")) %>%
-  mutate(text = str_remove_all(text, remove_reg)) %>%
-  unnest_tokens(word, text, token = "tweets") %>%
+tidy_tweets <- tweets |> 
+  filter(!str_detect(text, "^RT")) |>
+  mutate(text = str_remove_all(text, remove_reg)) |>
+  unnest_tokens(word, text) |>
   filter(!word %in% stop_words$word,
          !word %in% str_remove_all(stop_words$word, "'"),
          str_detect(word, "[a-z]"))
@@ -56,10 +56,10 @@ tidy_tweets <- tweets %>%
 Now we can calculate word frequencies for each person. First, we group by person and count how many times each person used each word. Then we use `left_join()` to add a column of the total number of words used by each person. (This is higher for Julia than David since she has more tweets than David.) Finally, we calculate a frequency for each person and word.
 
 ```{r frequency, dependson = "tidytweets"}
-frequency <- tidy_tweets %>% 
-  count(person, word, sort = TRUE) %>% 
-  left_join(tidy_tweets %>% 
-              count(person, name = "total")) %>%
+frequency <- tidy_tweets |> 
+  count(person, word, sort = TRUE) |> 
+  left_join(tidy_tweets |> 
+              count(person, name = "total")) |>
   mutate(freq = n/total)
 
 frequency
@@ -70,9 +70,9 @@ This is a nice and tidy data frame but we would actually like to plot those freq
 ```{r wide, dependson = "frequency"}
 library(tidyr)
 
-frequency <- frequency %>% 
-  select(person, word, freq) %>% 
-  pivot_wider(names_from = person, values_from = freq) %>%
+frequency <- frequency |> 
+  select(person, word, freq) |> 
+  pivot_wider(names_from = person, values_from = freq) |>
   arrange(Julia, David)
 
 frequency
@@ -101,7 +101,7 @@ This may not even need to be pointed out, but David and Julia have used their Tw
 We just made a plot comparing raw word frequencies over our whole Twitter histories; now let's find which words are more or less likely to come from each person's account using the log odds ratio. First, let's restrict the analysis moving forward to tweets from David and Julia sent during 2016. David was consistently active on Twitter for all of 2016 and this was about when Julia transitioned into data science as a career.
 
 ```{r tidytweetsnew, dependson = "tidytweets"}
-tidy_tweets <- tidy_tweets %>%
+tidy_tweets <- tidy_tweets |>
   filter(timestamp >= as.Date("2016-01-01"),
          timestamp < as.Date("2017-01-01"))
 ```
@@ -114,22 +114,22 @@ $$\text{log odds ratio} = \ln{\left(\frac{\left[\frac{n+1}{\text{total}+1}\right
 where $n$ is the number of times the word in question is used by each person and the total indicates the total words for each person.
 
 ```{r word_ratios, dependson = "tidytweetsnew"}
-word_ratios <- tidy_tweets %>%
-  filter(!str_detect(word, "^@")) %>%
-  count(word, person) %>%
-  group_by(word) %>%
-  filter(sum(n) >= 10) %>%
-  ungroup() %>%
-  pivot_wider(names_from = person, values_from = n, values_fill = 0) %>%
-  mutate_if(is.numeric, list(~(. + 1) / (sum(.) + 1))) %>%
-  mutate(logratio = log(David / Julia)) %>%
+word_ratios <- tidy_tweets |>
+  filter(!str_detect(word, "^@")) |>
+  count(word, person) |>
+  group_by(word) |>
+  filter(sum(n) >= 10) |>
+  ungroup() |>
+  pivot_wider(names_from = person, values_from = n, values_fill = 0) |>
+  mutate_if(is.numeric, list(~(. + 1) / (sum(.) + 1))) |>
+  mutate(logratio = log(David / Julia)) |>
   arrange(desc(logratio))
 ```
 
 What are some words that have been about equally likely to come from David or Julia's account during 2016?
 
 ```{r, dependson = "word_ratios"}
-word_ratios %>% 
+word_ratios |> 
   arrange(abs(logratio))
 ```
 
@@ -138,11 +138,11 @@ We are about equally likely to tweet about words, science, ideas, and email.
 Which words are most likely to be from Julia's account or from David's account? Let's just take the top 15 most distinctive words for each account and plot them in Figure \@ref(fig:plotratios).
 
 ```{r plotratios, dependson = "word_ratios", fig.width=6.5, fig.height=6, fig.cap="Comparing the odds ratios of words from our accounts"}
-word_ratios %>%
-  group_by(logratio < 0) %>%
-  slice_max(abs(logratio), n = 15) %>% 
-  ungroup() %>%
-  mutate(word = reorder(word, logratio)) %>%
+word_ratios |>
+  group_by(logratio < 0) |>
+  slice_max(abs(logratio), n = 15) |> 
+  ungroup() |>
+  mutate(word = reorder(word, logratio)) |>
   ggplot(aes(word, logratio, fill = logratio < 0)) +
   geom_col(show.legend = FALSE) +
   coord_flip() +
@@ -159,16 +159,16 @@ The section above looked at overall word use, but now let's ask a different ques
 After we have the time bins defined, we count how many times each of us used each word in each time bin. After that, we add columns to the data frame for the total number of words used in each time bin by each person and the total number of times each word was used by each person. We can then `filter()` to only keep words used at least some minimum number of times (30, in this case).
 
 ```{r words_by_time, dependson = "tidytweetsnew"}
-words_by_time <- tidy_tweets %>%
-  filter(!str_detect(word, "^@")) %>%
-  mutate(time_floor = floor_date(timestamp, unit = "1 month")) %>%
-  count(time_floor, person, word) %>%
-  group_by(person, time_floor) %>%
-  mutate(time_total = sum(n)) %>%
-  group_by(person, word) %>%
-  mutate(word_total = sum(n)) %>%
-  ungroup() %>%
-  rename(count = n) %>%
+words_by_time <- tidy_tweets |>
+  filter(!str_detect(word, "^@")) |>
+  mutate(time_floor = floor_date(timestamp, unit = "1 month")) |>
+  count(time_floor, person, word) |>
+  group_by(person, time_floor) |>
+  mutate(time_total = sum(n)) |>
+  group_by(person, word) |>
+  mutate(word_total = sum(n)) |>
+  ungroup() |>
+  rename(count = n) |>
   filter(word_total > 30)
 
 words_by_time
@@ -179,7 +179,7 @@ Each row in this data frame corresponds to one person using one word in a given 
 We can use `nest()` from tidyr to make a data frame with a list column that contains little miniature data frames for each word. Let's do that now and take a look at the resulting structure.
 
 ```{r nest, dependson = "words_by_time"}
-nested_data <- words_by_time %>%
+nested_data <- words_by_time |>
   nest(data = c(-word, -person)) 
 
 nested_data
@@ -194,7 +194,7 @@ We can think about this modeling procedure answering a question like, "Was a giv
 ```{r nested_models, dependson = "nest"}
 library(purrr)
 
-nested_models <- nested_data %>%
+nested_models <- nested_data |>
   mutate(models = map(data, ~ glm(cbind(count, time_total) ~ time_floor, ., 
                                   family = "binomial")))
 
@@ -206,17 +206,17 @@ Now notice that we have a new column for the modeling results; it is another lis
 ```{r slopes, dependson = "nested_models"}
 library(broom)
 
-slopes <- nested_models %>%
-  mutate(models = map(models, tidy)) %>%
-  unnest(cols = c(models)) %>%
-  filter(term == "time_floor") %>%
+slopes <- nested_models |>
+  mutate(models = map(models, tidy)) |>
+  unnest(cols = c(models)) |>
+  filter(term == "time_floor") |>
   mutate(adjusted.p.value = p.adjust(p.value))
 ```
 
 Now let's find the most important slopes. Which words have changed in frequency at a moderately significant level in our tweets?
 
 ```{r top_slopes2, dependson = "slopes"}
-top_slopes <- slopes %>% 
+top_slopes <- slopes |> 
   filter(adjusted.p.value < 0.05)
 
 top_slopes
@@ -225,9 +225,9 @@ top_slopes
 To visualize our results, we can plot these words' use for both David and Julia over this year of tweets.
 
 ```{r topdave, dependson = "top_slopes2", fig.width=8, fig.height=5, fig.cap = "Trending words in David's tweets"}
-words_by_time %>%
-  inner_join(top_slopes, by = c("word", "person")) %>%
-  filter(person == "David") %>%
+words_by_time |>
+  inner_join(top_slopes, by = c("word", "person")) |>
+  filter(person == "David") |>
   ggplot(aes(time_floor, count/time_total, color = word)) +
   geom_line(size = 1.3) +
   labs(x = NULL, y = "Word frequency")
@@ -241,9 +241,9 @@ We see in Figure \@ref(fig:topdave) that David tweeted a lot about the UseR conf
 Now let's plot words that have changed frequency in Julia's tweets in Figure \@ref(fig:topjulia).
 
 ```{r topjulia, dependson = "top_slopes2", fig.width=8, fig.height=5, fig.cap="Trending words in Julia's tweets"}
-words_by_time %>%
-  inner_join(top_slopes, by = c("word", "person")) %>%
-  filter(person == "Julia") %>%
+words_by_time |>
+  inner_join(top_slopes, by = c("word", "person")) |>
+  filter(person == "Julia") |>
   ggplot(aes(time_floor, count/time_total, color = word)) +
   geom_line(size = 1.3) +
   labs(x = NULL, y = "Word frequency")
@@ -258,20 +258,20 @@ Another important characteristic of tweets is how many times they are favorited 
 ```{r setup2}
 tweets_julia <- read_csv("data/juliasilge_tweets.csv")
 tweets_dave <- read_csv("data/drob_tweets.csv")
-tweets <- bind_rows(tweets_julia %>% 
+tweets <- bind_rows(tweets_julia |> 
                       mutate(person = "Julia"),
-                    tweets_dave %>% 
-                      mutate(person = "David")) %>%
+                    tweets_dave |> 
+                      mutate(person = "David")) |>
   mutate(created_at = ymd_hms(created_at))
 ```
 
 Now that we have this second, smaller set of only recent tweets, let's again use `unnest_tokens()` to transform these tweets to a tidy data set. Let's remove all retweets and replies from this data set so we only look at regular tweets that David and Julia have posted directly.
 
 ```{r tidy_tweets2, dependson = "setup2"}
-tidy_tweets <- tweets %>% 
-  filter(!str_detect(text, "^(RT|@)")) %>%
-  mutate(text = str_remove_all(text, remove_reg)) %>%
-  unnest_tokens(word, text, token = "tweets", strip_url = TRUE) %>%
+tidy_tweets <- tweets |> 
+  filter(!str_detect(text, "^(RT|@)")) |>
+  mutate(text = str_remove_all(text, remove_reg)) |>
+  unnest_tokens(word, text) |>
   filter(!word %in% stop_words$word,
          !word %in% str_remove_all(stop_words$word, "'"))
 
@@ -283,10 +283,10 @@ Notice that the `word` column contains tokenized emoji.
 To start with, let’s look at the number of times each of our tweets was retweeted. Let's find the total number of retweets for each person.
 
 ```{r rt_totals, dependson = "tidy_tweets2"}
-totals <- tidy_tweets %>% 
-  group_by(person, id) %>% 
-  summarise(rts = first(retweets)) %>% 
-  group_by(person) %>% 
+totals <- tidy_tweets |> 
+  group_by(person, id) |> 
+  summarise(rts = first(retweets)) |> 
+  group_by(person) |> 
   summarise(total_rts = sum(rts))
 
 totals
@@ -295,31 +295,31 @@ totals
 Now let's find the median number of retweets for each word and person. We probably want to count each tweet/word combination only once, so we will use `group_by()` and `summarise()` twice, one right after the other. The first `summarise()` statement counts how many times each word was retweeted, for each tweet and person. In the second `summarise()` statement, we can find the median retweets for each person and word, also count the number of times each word was used ever by each person and keep that in `uses`. Next, we can join this to the data frame of retweet totals. Let's `filter()` to only keep words mentioned at least 5 times.
 
 ```{r word_by_rts, dependson = c("rt_totals", "tidy_tweets2")}
-word_by_rts <- tidy_tweets %>% 
-  group_by(id, word, person) %>% 
-  summarise(rts = first(retweets)) %>% 
-  group_by(person, word) %>% 
-  summarise(retweets = median(rts), uses = n()) %>%
-  left_join(totals) %>%
-  filter(retweets != 0) %>%
+word_by_rts <- tidy_tweets |> 
+  group_by(id, word, person) |> 
+  summarise(rts = first(retweets)) |> 
+  group_by(person, word) |> 
+  summarise(retweets = median(rts), uses = n()) |>
+  left_join(totals) |>
+  filter(retweets != 0) |>
   ungroup()
 
-word_by_rts %>% 
-  filter(uses >= 5) %>%
+word_by_rts |> 
+  filter(uses >= 5) |>
   arrange(desc(retweets))
 ```
 
 At the top of this sorted data frame, we see tweets from Julia and David about packages that they work on, like [gganimate](https://github.com/dgrtwo/gganimate) and [tidytext](https://cran.r-project.org/package=tidytext). Let's plot the words that have the highest median retweets for each of our accounts (Figure \@ref(fig:plotrts)).
 
 ```{r plotrts, dependson = "word_by_rts", fig.width=8, fig.height=4, fig.cap="Words with highest median retweets"}
-word_by_rts %>%
-  filter(uses >= 5) %>%
-  group_by(person) %>%
-  slice_max(retweets, n = 10) %>% 
-  arrange(retweets) %>%
-  ungroup() %>%
-  mutate(word = factor(word, unique(word))) %>%
-  ungroup() %>%
+word_by_rts |>
+  filter(uses >= 5) |>
+  group_by(person) |>
+  slice_max(retweets, n = 10) |> 
+  arrange(retweets) |>
+  ungroup() |>
+  mutate(word = factor(word, unique(word))) |>
+  ungroup() |>
   ggplot(aes(word, retweets, fill = person)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ person, scales = "free", ncol = 2) +
@@ -333,33 +333,33 @@ We see lots of word about R packages, including tidytext, a package about which 
 We can follow a similar procedure to see which words led to more favorites. Are they different than the words that lead to more retweets?
 
 ```{r word_by_favs, dependson = "tidy_tweets2"}
-totals <- tidy_tweets %>% 
-  group_by(person, id) %>% 
-  summarise(favs = first(favorites)) %>% 
-  group_by(person) %>% 
+totals <- tidy_tweets |> 
+  group_by(person, id) |> 
+  summarise(favs = first(favorites)) |> 
+  group_by(person) |> 
   summarise(total_favs = sum(favs))
 
-word_by_favs <- tidy_tweets %>% 
-  group_by(id, word, person) %>% 
-  summarise(favs = first(favorites)) %>% 
-  group_by(person, word) %>% 
-  summarise(favorites = median(favs), uses = n()) %>%
-  left_join(totals) %>%
-  filter(favorites != 0) %>%
+word_by_favs <- tidy_tweets |> 
+  group_by(id, word, person) |> 
+  summarise(favs = first(favorites)) |> 
+  group_by(person, word) |> 
+  summarise(favorites = median(favs), uses = n()) |>
+  left_join(totals) |>
+  filter(favorites != 0) |>
   ungroup()
 ```
 
 We have built the data frames we need. Now let's make our visualization in Figure \@ref(fig:plotfavs).
 
 ```{r plotfavs, dependson = "word_by_favs", fig.width=8, fig.height=4, fig.cap="Words with highest median favorites"}
-word_by_favs %>%
-  filter(uses >= 5) %>%
-  group_by(person) %>%
-  slice_max(favorites, n = 10) %>% 
-  arrange(favorites) %>%
-  ungroup() %>%
-  mutate(word = factor(word, unique(word))) %>%
-  ungroup() %>%
+word_by_favs |>
+  filter(uses >= 5) |>
+  group_by(person) |>
+  slice_max(favorites, n = 10) |> 
+  arrange(favorites) |>
+  ungroup() |>
+  mutate(word = factor(word, unique(word))) |>
+  ungroup() |>
   ggplot(aes(word, favorites, fill = person)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~ person, scales = "free", ncol = 2) +

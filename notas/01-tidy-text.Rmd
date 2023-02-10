@@ -1,5 +1,13 @@
 # The tidy text format {#tidytext}
 
+```{r setup, eval = FALSE, include = FALSE}
+library(tidyverse)
+library(ggplot2)
+tibble(x = rnorm(10000)) |> 
+  ggplot(aes(x = x)) + 
+    geom_histogram()
+```
+
 Using tidy data principles is a powerful way to make handling data easier and more effective, and this is no less true when it comes to dealing with text. As described by Hadley Wickham [@tidydata], tidy data has a specific structure:
 
 * Each variable is a column
@@ -47,7 +55,7 @@ What does it mean that this data frame has printed out as a "tibble"? A tibble i
 
 Notice that this data frame containing text isn't yet compatible with tidy text analysis, though. We can't filter out words or count which occur most frequently, since each row is made up of multiple combined words. We need to convert this so that it has **one-token-per-document-per-row**. 
 
-```{block, type = "rmdnote"}
+```{block}
 A token is a meaningful unit of text, most often a word, that we are interested in using for further analysis, and tokenization is the process of splitting text into tokens. 
 ```
 
@@ -72,7 +80,7 @@ After using `unnest_tokens`, we've split each row so that there is one token (wo
 
 Having the text data in this format lets us manipulate, process, and visualize the text using the standard set of tidy tools, namely dplyr, tidyr, and ggplot2, as shown in Figure \@ref(fig:tidyflow-ch1).
 
-```{r tidyflow-ch1, echo = FALSE, out.width = '100%', fig.cap = "A flowchart of a typical text analysis using tidy data principles. This chapter shows how to summarize and visualize text using these tools."}
+```{r tidyflow-ch1, echo = FALSE, out.width = '100%', fig.cap = "A flowchart of a typical text analysis using tidy data principles. This chapter shows how to summarize and visualize text using these tools.", eval = FALSE}
 knitr::include_graphics("images/tmwr_0101.png")
 ```
 
