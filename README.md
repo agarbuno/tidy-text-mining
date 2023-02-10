@@ -1,6 +1,8 @@
-
+# Text mining with `R`
 
 This is a port of the original material shared by the authors of [**Text Mining with R: A Tidy Approach**](http://tidytextmining.com/). 
+
+## Objective 
 
 The intention with this is to have a short tutorial on text mining following the principles of tidy data, for which Silge's and Robinson's is a great material. 
 
@@ -9,7 +11,6 @@ The aim is to cover the chapters:
 - 03 : Token frequency 
 - 04 : Word combinations 
 - 07 : Case study 
-
 
 ## _Disclaimer_
 
